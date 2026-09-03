@@ -1,105 +1,105 @@
 # ForgeFlow AI Automation
 
-**A personal full-stack portfolio demonstration of reliable, human-reviewable AI workflow execution.**
+> **A full-stack workflow control-plane demonstration that turns unstructured input into a reviewable next action—without hiding how the result was produced.**
 
-ForgeFlow turns an unstructured input into a reviewable action brief. It intentionally keeps the system boundary visible: every run records its execution mode, stores a durable result, and requires a human checkpoint before any future external delivery.
+[Source repository](https://github.com/Amyvdev1/forgeflow-ai-automation) · [Amy Villa on GitHub](https://github.com/Amyvdev1) · [Portfolio](https://amy-villa-signal-gallery.vercel.app/) · [Contact Amy](mailto:amyv.dev@gmail.com)
 
-> This repository is an independent code sample. It is **not** a production service, customer deployment, certified security control, or a claim of enterprise scale.
+ForgeFlow is an independent full-stack code sample built to demonstrate practical AI automation patterns: clear input contracts, durable run history, explicit execution modes, optional model use, safe fallback behavior, and a visible human review checkpoint.
 
-## Why this project exists
+> A workflow can be useful without pretending it is autonomous. ForgeFlow records whether a run used deterministic logic, successfully used the configured Gemini adapter, or fell back because the optional AI adapter was unavailable.
 
-This project demonstrates the engineering decisions behind practical AI automation:
-
-- A responsive **React + TypeScript** control plane for selecting workflows, submitting inputs, inspecting outputs, and viewing run history.
-- A documented **FastAPI + SQLite** REST service with structured request validation, seeded workflows, durable run records, explicit states, and an operational health endpoint.
-- An optional **Gemini API adapter** that is used only when configured. If an AI call is unavailable, the API returns a transparent deterministic fallback rather than pretending the model ran.
-- A documented human-review checkpoint so a generated output does not become an automatic external action.
-- **pytest** API coverage, a GitHub Actions CI workflow, Dockerfiles, and Docker Compose for reproducible local setup.
-
-## Architecture
+## System at a glance
 
 ```text
-React / TypeScript dashboard
-        |
-        | REST: workflows, workflow runs, health
-        v
-FastAPI service ---- SQLite durable store
-        |
-        +---- Optional Gemini adapter (only with GEMINI_API_KEY)
-        |
-        +---- Deterministic fallback + run status / error record
+React + TypeScript dashboard
+        │  REST: workflows, runs, health
+        ▼
+FastAPI service ───────── SQLite workflow + run records
+        │
+        ├── deterministic result path
+        └── optional Gemini adapter
+                  │
+                  └── handled failure → recorded degraded fallback
 ```
+
+## What Amy built
+
+| Layer | What the code does |
+|---|---|
+| **Control plane** | React dashboard loads workflows and recent history, selects a workflow, accepts text input, requests optional AI use, and renders status, priority, next action, and fallback information. |
+| **API contract** | FastAPI routes and Pydantic models validate workflow and input fields, create workflows, execute runs, and return typed records. |
+| **SQLite persistence** | The backend creates workflow/run tables, seeds two initial workflow definitions, writes execution records, and reads the most recent run history. |
+| **Deterministic path** | Local logic normalizes input, detects a small documented high-signal vocabulary, derives priority, and returns an action brief plus a human-review checkpoint. |
+| **Optional AI adapter** | A direct Gemini API integration is requested only when an operator enables it and configures `GEMINI_API_KEY`; the model is never presumed to have run. |
+| **Transparent fallback** | Missing credentials or handled provider/parsing failures produce a persisted `degraded` result with `deterministic_fallback` and an error message. |
+| **Reproducible delivery** | Dockerfiles, Compose, `.env.example`, and GitHub Actions document the local services and verification commands. |
+
+## Code map
+
+| Source area | What it explains |
+|---|---|
+| [`backend/app/main.py`](backend/app/main.py) | FastAPI lifecycle, CORS, Pydantic models, SQLite schema, seed data, serializers, deterministic workflow logic, Gemini adapter, fallback behavior, and API routes. |
+| [`backend/tests/test_main.py`](backend/tests/test_main.py) | Tests for health, deterministic execution with persisted history, and missing-key AI fallback. |
+| [`frontend/src/App.tsx`](frontend/src/App.tsx) | Dashboard state, REST helper, workflow selection, form submit behavior, metrics, run-history cards, error feedback, and the AI toggle. |
+| [`frontend/src/styles.css`](frontend/src/styles.css) | Focus-visible treatment, responsive panels, reduced-motion rules, and the control-plane visual language. |
+| [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | Separate backend and frontend GitHub Actions jobs for pytest plus TypeScript/build checks. |
+| [`docker-compose.yml`](docker-compose.yml) | The local two-service topology: FastAPI/SQLite API and static Nginx-served frontend. |
+
+Read the detailed [engineering code tour](docs/CODE_TOUR.md) for the flow from an input to a persisted run record.
+
+## API surface
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `GET` | `/health` | Small service health response. |
+| `GET` | `/api/workflows` | Reads available workflow definitions. |
+| `POST` | `/api/workflows` | Creates a validated local workflow definition. |
+| `POST` | `/api/workflows/{workflow_id}/runs` | Executes a workflow and stores an auditable result. |
+| `GET` | `/api/runs` | Reads the latest persisted execution records. |
 
 ## Local setup
 
-### Option A — run the services in development mode
+### Development mode
 
 ```bash
-# terminal 1
+# Terminal 1 — API
 cd backend
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 
-# terminal 2
+# Terminal 2 — web dashboard
 cd frontend
-corepack enable
 pnpm install
 pnpm dev
 ```
 
-Open `http://localhost:5174`. The Vite proxy forwards `/api` calls to the FastAPI service.
+Open `http://localhost:5174`. Vite proxies `/api` requests to the FastAPI service.
 
-### Option B — run with Docker Compose
+### Docker Compose
 
 ```bash
 cp .env.example .env
-# Add GEMINI_API_KEY only if you want to test the optional adapter.
+# Add GEMINI_API_KEY only when intentionally testing the optional AI adapter.
 docker compose up --build
 ```
 
-Open the static dashboard at `http://localhost:8080` and the API health check at `http://localhost:8000/health`.
+The dashboard is served at `http://localhost:8080`; API health is at `http://localhost:8000/health`.
 
-## Optional Gemini integration
-
-1. Copy `.env.example` to `.env`.
-2. Set `GEMINI_API_KEY` locally. Never commit a key.
-3. In the dashboard, enable **Use Gemini adapter if configured**.
-
-The backend calls `gemini-2.5-flash` by default and requests JSON-shaped output. If the key is absent or the provider fails, the response is marked `degraded` with `execution_mode: deterministic_fallback`, preserving the reason in the run record.
-
-## API surface
-
-| Method | Endpoint | Purpose |
-|---|---|---|
-| `GET` | `/health` | Minimal service health signal |
-| `GET` | `/api/workflows` | Read workflow definitions |
-| `POST` | `/api/workflows` | Create a validated workflow definition |
-| `POST` | `/api/workflows/{workflow_id}/runs` | Execute a workflow and persist an auditable result |
-| `GET` | `/api/runs` | Review recent recorded runs |
-
-## Quality checks
+## Verification
 
 ```bash
 cd backend && pytest -q
 cd frontend && pnpm check && pnpm build
 ```
 
-The repository’s GitHub Actions workflow runs the API tests plus the frontend type-check and production build on pushes and pull requests.
+The local API suite covers health, deterministic run persistence, and the missing-key fallback path. The public [GitHub Actions workflow](https://github.com/Amyvdev1/forgeflow-ai-automation/actions) runs backend tests plus frontend type-check/build on pushes and pull requests.
 
-The current API tests cover the health signal, deterministic workflow execution, durable run history, and the transparent fallback state when an AI key is unavailable. Manual local verification should still be performed before using any changed workflow with real content.
+## Intentional boundaries
 
-## What this code sample does not claim
-
-- It does **not** claim production AI reliability, autonomous external delivery, real customer data, enterprise monitoring, cloud-scale infrastructure, Kubernetes, or formal security/compliance certification.
-- It does **not** include a hard-coded API key or send data to an AI provider unless an operator intentionally configures the optional adapter.
-- It does **not** replace human approval for consequential work.
-
-## Stack
-
-React · TypeScript · Vite · FastAPI · Pydantic · SQLite · REST · pytest · Docker · Docker Compose · GitHub Actions · optional Gemini API
+ForgeFlow is a **personal portfolio code sample**, not a production service. It does not claim customer data, autonomous external delivery, enterprise-scale infrastructure, formal security/compliance certification, provider uptime guarantees, rate limiting, retries, observability, external connectors, or production deployment. The Gemini key is never committed and the service does not call an AI provider unless an operator explicitly enables the optional adapter.
 
 ---
 
-Created as a public portfolio code sample by [Amy Villa](https://github.com/Amyvdev1).
+Created by **Amy Villa** to demonstrate full-stack engineering, transparent AI automation, and human-centered workflow design.
