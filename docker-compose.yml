@@ -1,0 +1,21 @@
+services:
+  api:
+    build: ./backend
+    environment:
+      FORGEFLOW_DB: /data/forgeflow.db
+      CORS_ORIGINS: http://localhost:5174
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+    volumes:
+      - forgeflow-data:/data
+    ports:
+      - "8000:8000"
+  web:
+    build: ./frontend
+    depends_on:
+      - api
+    ports:
+      - "8080:80"
+
+volumes:
+  forgeflow-data:
