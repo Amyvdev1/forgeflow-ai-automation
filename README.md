@@ -32,7 +32,7 @@ FastAPI service ───────── SQLite workflow + run records
 | **Deterministic path** | Local logic normalizes input, detects a small documented high-signal vocabulary, derives priority, and returns an action brief plus a human-review checkpoint. |
 | **Optional AI adapter** | A direct Gemini API integration is requested only when an operator enables it and configures `GEMINI_API_KEY`; the model is never presumed to have run. |
 | **Transparent fallback** | Missing credentials or handled provider/parsing failures produce a persisted `degraded` result with `deterministic_fallback` and an error message. |
-| **Reproducible delivery** | Dockerfiles, Compose, `.env.example`, and GitHub Actions document the local services and verification commands. |
+| **Reproducible delivery** | Dockerfiles, a same-origin Nginx/Compose topology, `.env.example`, a local smoke check, and GitHub Actions document the local services and verification commands. |
 
 ## Code map
 
@@ -44,7 +44,8 @@ FastAPI service ───────── SQLite workflow + run records
 | [`frontend/src/styles.css`](frontend/src/styles.css) | Focus-visible treatment, responsive panels, reduced-motion rules, and the control-plane visual language. |
 | [`frontend/src/App.test.tsx`](frontend/src/App.test.tsx) | Focused interface checks that verify workflow loading, explicit execution-mode language, and a deterministic run request. |
 | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | Separate backend and frontend GitHub Actions jobs for pytest plus interface tests, TypeScript, and production-build checks. |
-| [`docker-compose.yml`](docker-compose.yml) | The local two-service topology: FastAPI/SQLite API and static Nginx-served frontend. |
+| [`docker-compose.yml`](docker-compose.yml) | The local two-service topology: FastAPI/SQLite API, health checks, and an Nginx-served frontend that proxies browser API requests. |
+| [`scripts/smoke-compose.sh`](scripts/smoke-compose.sh) | A repeatable local browser-to-API smoke check for the Nginx proxy path. |
 
 Read the detailed [engineering code tour](docs/CODE_TOUR.md) for the flow from an input to a persisted run record.
 
@@ -86,7 +87,15 @@ cp .env.example .env
 docker compose up --build
 ```
 
-The dashboard is served at `http://localhost:8080`; API health is at `http://localhost:8000/health`.
+The dashboard is served at `http://localhost:8080`. In this local container setup, Nginx serves the built React app and proxies same-origin `/api/*` and `/health` requests to the FastAPI service. API health also remains directly available at `http://localhost:8000/health` for local inspection.
+
+After both services report healthy, run the reproducible browser-to-API smoke check:
+
+```bash
+./scripts/smoke-compose.sh
+```
+
+The check loads the Nginx-served dashboard, reaches the proxied health endpoint, and posts a deterministic workflow run through the same-origin `/api` path. This validates the **local Docker delivery topology**; it does not claim a hosted production deployment.
 
 ## Verification
 
