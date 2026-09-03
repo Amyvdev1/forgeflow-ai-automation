@@ -9,5 +9,9 @@ export default defineConfig({
       "/api": "http://localhost:8000",
       "/health": "http://localhost:8000"
     }
+  },
+  test: {
+    environment: "jsdom",
+    setupFiles: ["./src/setupTests.ts"]
   }
 });

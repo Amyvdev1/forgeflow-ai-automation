@@ -42,7 +42,8 @@ FastAPI service ───────── SQLite workflow + run records
 | [`backend/tests/test_main.py`](backend/tests/test_main.py) | Tests for health, deterministic execution with persisted history, and missing-key AI fallback. |
 | [`frontend/src/App.tsx`](frontend/src/App.tsx) | Dashboard state, REST helper, workflow selection, form submit behavior, metrics, run-history cards, error feedback, and the AI toggle. |
 | [`frontend/src/styles.css`](frontend/src/styles.css) | Focus-visible treatment, responsive panels, reduced-motion rules, and the control-plane visual language. |
-| [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | Separate backend and frontend GitHub Actions jobs for pytest plus TypeScript/build checks. |
+| [`frontend/src/App.test.tsx`](frontend/src/App.test.tsx) | Focused interface checks that verify workflow loading, explicit execution-mode language, and a deterministic run request. |
+| [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | Separate backend and frontend GitHub Actions jobs for pytest plus interface tests, TypeScript, and production-build checks. |
 | [`docker-compose.yml`](docker-compose.yml) | The local two-service topology: FastAPI/SQLite API and static Nginx-served frontend. |
 
 Read the detailed [engineering code tour](docs/CODE_TOUR.md) for the flow from an input to a persisted run record.
@@ -91,10 +92,10 @@ The dashboard is served at `http://localhost:8080`; API health is at `http://loc
 
 ```bash
 cd backend && pytest -q
-cd frontend && pnpm check && pnpm build
+cd frontend && pnpm test:run && pnpm check && pnpm build
 ```
 
-The local API suite covers health, deterministic run persistence, and the missing-key fallback path. The public [GitHub Actions workflow](https://github.com/Amyvdev1/forgeflow-ai-automation/actions) runs backend tests plus frontend type-check/build on pushes and pull requests.
+The local API suite covers health, deterministic run persistence, and the missing-key fallback path. The frontend suite covers initial workflow loading, explicit execution-mode language, and a submitted deterministic run. The public [GitHub Actions workflow](https://github.com/Amyvdev1/forgeflow-ai-automation/actions) runs backend tests plus frontend interface tests, type-checking, and production build checks on pushes and pull requests.
 
 ## Intentional boundaries
 
