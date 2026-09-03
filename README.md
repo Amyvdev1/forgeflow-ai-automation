@@ -46,6 +46,7 @@ FastAPI service ───────── SQLite workflow + run records
 | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | Separate backend and frontend GitHub Actions jobs for pytest plus interface tests, TypeScript, and production-build checks. |
 | [`docker-compose.yml`](docker-compose.yml) | The local two-service topology: FastAPI/SQLite API, health checks, and an Nginx-served frontend that proxies browser API requests. |
 | [`scripts/smoke-compose.sh`](scripts/smoke-compose.sh) | A repeatable local browser-to-API smoke check for the Nginx proxy path. |
+| [`docs/INTEGRATION_WALKTHROUGH.md`](docs/INTEGRATION_WALKTHROUGH.md) | A request/response walkthrough with API contracts, explicit fallback behavior, integration error handling, and delivery boundaries. |
 
 Read the detailed [engineering code tour](docs/CODE_TOUR.md) for the flow from an input to a persisted run record.
 

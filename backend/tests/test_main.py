@@ -42,3 +42,35 @@ def test_ai_mode_degrades_transparently_when_not_configured(tmp_path, monkeypatc
     assert body["status"] == "degraded"
     assert body["execution_mode"] == "deterministic_fallback"
     assert "not configured" in body["error_message"]
+
+
+def test_unknown_workflow_returns_a_clear_not_found_contract(tmp_path, monkeypatch):
+    monkeypatch.setattr("app.main.DATABASE_PATH", tmp_path / "not-found.db")
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/workflows/wf_missing/runs",
+            json={"input": "Please review this request.", "use_ai": False},
+        )
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Workflow not found"
+
+
+def test_disabled_workflow_returns_a_conflict_before_execution(tmp_path, monkeypatch):
+    monkeypatch.setattr("app.main.DATABASE_PATH", tmp_path / "disabled.db")
+    with TestClient(app) as client:
+        workflow = client.post(
+            "/api/workflows",
+            json={
+                "name": "Paused review queue",
+                "description": "A local workflow held for operator review.",
+                "prompt": "Identify missing context and wait for an operator decision.",
+                "enabled": False,
+            },
+        )
+        response = client.post(
+            f"/api/workflows/{workflow.json()['id']}/runs",
+            json={"input": "Please review this request.", "use_ai": False},
+        )
+    assert workflow.status_code == 201
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Workflow is disabled"
