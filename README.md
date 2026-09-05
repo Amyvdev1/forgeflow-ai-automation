@@ -1,14 +1,22 @@
 # ForgeFlow AI Automation
 
-> **A full-stack workflow control-plane demonstration that turns unstructured input into a reviewable next action—without hiding how the result was produced.**
+> **AI automation systems with explicit execution state, deterministic fallback, persistence, and human review.**
 
-[Source repository](https://github.com/Amyvdev1/forgeflow-ai-automation) · [Amy Villa on GitHub](https://github.com/Amyvdev1) · [Portfolio](https://amy-villa-signal-gallery.vercel.app/) · [Contact Amy](mailto:amyv.dev@gmail.com)
+[Source](https://github.com/Amyvdev1/forgeflow-ai-automation) · [Amy Villa on GitHub](https://github.com/Amyvdev1) · [Contact](mailto:amyv.dev@gmail.com)
 
-ForgeFlow is an independent full-stack code sample built to demonstrate practical AI automation patterns: clear input contracts, durable run history, explicit execution modes, optional model use, safe fallback behavior, and a visible human review checkpoint.
+## What it solves
 
-> A workflow can be useful without pretending it is autonomous. ForgeFlow records whether a run used deterministic logic, successfully used the configured Gemini adapter, or fell back because the optional AI adapter was unavailable.
+ForgeFlow turns unstructured input into a **reviewable next action** while keeping the execution path visible: deterministic logic, optional AI-provider use, degraded fallback, persisted history, and a human decision point.
 
-## System at a glance
+## Why it exists
+
+Automation demos often present a generated answer without showing how it was produced or what happened when a provider failed. ForgeFlow is designed around the opposite principle: the interface and API expose execution mode, persisted state, fallback behavior, and the checkpoint where human judgment remains necessary.
+
+## Live demo
+
+**Production deployment: pending.** The repository includes a complete local browser/API path and Docker Compose topology. The demo does not require an AI key: the deterministic path works without external services, and the optional Gemini adapter is used only when explicitly enabled.
+
+## Architecture
 
 ```text
 React + TypeScript dashboard
@@ -19,36 +27,36 @@ FastAPI service ───────── SQLite workflow + run records
         ├── deterministic result path
         └── optional Gemini adapter
                   │
-                  └── handled failure → recorded degraded fallback
+                  └── handled failure → persisted degraded fallback
 ```
 
-## What Amy built
+### Stack
 
-| Layer | What the code does |
+**React · TypeScript · FastAPI · Pydantic · SQLite · Docker/Compose · Nginx · Vitest · pytest · GitHub Actions**
+
+## Key engineering decisions
+
+| Decision | Why it is here |
 |---|---|
-| **Control plane** | React dashboard loads workflows and recent history, selects a workflow, accepts text input, requests optional AI use, and renders status, priority, next action, and fallback information. |
-| **API contract** | FastAPI routes and Pydantic models validate workflow and input fields, create workflows, execute runs, and return typed records. |
-| **SQLite persistence** | The backend creates workflow/run tables, seeds two initial workflow definitions, writes execution records, and reads the most recent run history. |
-| **Deterministic path** | Local logic normalizes input, detects a small documented high-signal vocabulary, derives priority, and returns an action brief plus a human-review checkpoint. |
-| **Optional AI adapter** | A direct Gemini API integration is requested only when an operator enables it and configures `GEMINI_API_KEY`; the model is never presumed to have run. |
-| **Transparent fallback** | Missing credentials or handled provider/parsing failures produce a persisted `degraded` result with `deterministic_fallback` and an error message. |
-| **Reproducible delivery** | Dockerfiles, a same-origin Nginx/Compose topology, `.env.example`, a local smoke check, and GitHub Actions document the local services and verification commands. |
+| **Deterministic execution is always available** | The product still behaves predictably when no external provider is configured. |
+| **AI provider is opt-in** | The system never implies that a model ran unless the operator requested it and credentials are present. |
+| **Execution mode is persisted** | A reviewer can distinguish deterministic, provider-backed, and degraded-fallback results after the run completes. |
+| **Fallback is visible, not silent** | Provider/parsing failures become a `degraded` result with recorded fallback state and error context. |
+| **SQLite persistence** | Run history survives request boundaries and makes state inspectable without adding an ORM layer. |
+| **Human review remains explicit** | Automation produces a next-action brief; it does not pretend to replace judgment. |
+| **Same-origin local delivery** | Nginx serves the built client and proxies API requests in Compose, exercising a realistic browser-to-service path locally. |
 
-## Code map
+## Failure behavior
 
-| Source area | What it explains |
-|---|---|
-| [`backend/app/main.py`](backend/app/main.py) | FastAPI lifecycle, CORS, Pydantic models, SQLite schema, seed data, serializers, deterministic workflow logic, Gemini adapter, fallback behavior, and API routes. |
-| [`backend/tests/test_main.py`](backend/tests/test_main.py) | Tests for health, deterministic execution with persisted history, and missing-key AI fallback. |
-| [`frontend/src/App.tsx`](frontend/src/App.tsx) | Dashboard state, REST helper, workflow selection, form submit behavior, metrics, run-history cards, error feedback, and the AI toggle. |
-| [`frontend/src/styles.css`](frontend/src/styles.css) | Focus-visible treatment, responsive panels, reduced-motion rules, and the control-plane visual language. |
-| [`frontend/src/App.test.tsx`](frontend/src/App.test.tsx) | Focused interface checks that verify workflow loading, explicit execution-mode language, and a deterministic run request. |
-| [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | Separate backend and frontend GitHub Actions jobs for pytest plus interface tests, TypeScript, and production-build checks. |
-| [`docker-compose.yml`](docker-compose.yml) | The local two-service topology: FastAPI/SQLite API, health checks, and an Nginx-served frontend that proxies browser API requests. |
-| [`scripts/smoke-compose.sh`](scripts/smoke-compose.sh) | A repeatable local browser-to-API smoke check for the Nginx proxy path. |
-| [`docs/INTEGRATION_WALKTHROUGH.md`](docs/INTEGRATION_WALKTHROUGH.md) | A request/response walkthrough with API contracts, explicit fallback behavior, integration error handling, and delivery boundaries. |
+ForgeFlow treats failure as product state:
 
-Read the detailed [engineering code tour](docs/CODE_TOUR.md) for the flow from an input to a persisted run record.
+- missing `GEMINI_API_KEY` → persisted deterministic fallback,
+- handled provider/parsing error → `degraded` result with fallback context,
+- invalid workflow/input → typed FastAPI/Pydantic error boundary,
+- client request failure → visible interface error instead of silent success,
+- health or proxy failure → reproducible local checks fail rather than masking the delivery problem.
+
+A workflow can be useful without pretending it is autonomous. The result always exposes how it was produced.
 
 ## API surface
 
@@ -58,11 +66,48 @@ Read the detailed [engineering code tour](docs/CODE_TOUR.md) for the flow from a
 | `GET` | `/api/workflows` | Reads available workflow definitions. |
 | `POST` | `/api/workflows` | Creates a validated local workflow definition. |
 | `POST` | `/api/workflows/{workflow_id}/runs` | Executes a workflow and stores an auditable result. |
-| `GET` | `/api/runs` | Reads the latest persisted execution records. |
+| `GET` | `/api/runs` | Reads recent persisted execution records. |
 
-## Local setup
+## Testing & CI
 
-### Development mode
+```bash
+cd backend && pytest -q
+cd frontend && pnpm test:run && pnpm check && pnpm build
+```
+
+The backend suite covers health, deterministic execution with persistence, and missing-key AI fallback. The frontend suite covers workflow loading, explicit execution-mode language, and a submitted deterministic run. GitHub Actions runs backend tests plus frontend tests, TypeScript checking, and the production build on pushes and pull requests.
+
+For the local two-service delivery path:
+
+```bash
+cp .env.example .env
+docker compose up --build
+./scripts/smoke-compose.sh
+```
+
+The smoke check loads the Nginx-served dashboard, reaches the proxied health endpoint, and posts a deterministic workflow run through the same-origin `/api` path.
+
+## Security / evidence boundaries
+
+ForgeFlow is an **independent portfolio engineering sample**, not a production service. It does not claim customer data, autonomous external delivery, enterprise-scale infrastructure, formal security/compliance certification, provider uptime guarantees, rate limiting, queues, external observability, production deployment, or client outcomes.
+
+The Gemini key is never committed, and the service does not call an AI provider unless an operator explicitly enables the adapter.
+
+## 5-minute code review path
+
+1. [`backend/app/main.py`](backend/app/main.py) — typed API models, SQLite schema, deterministic execution, optional Gemini adapter, fallback behavior, and routes.
+2. [`backend/tests/test_main.py`](backend/tests/test_main.py) — health, persistence, and missing-key fallback behavior.
+3. [`frontend/src/App.tsx`](frontend/src/App.tsx) — workflow selection, API request path, explicit execution-mode state, history, and errors.
+4. [`frontend/src/App.test.tsx`](frontend/src/App.test.tsx) — focused interface behavior.
+5. [`docker-compose.yml`](docker-compose.yml) — local API + Nginx delivery topology.
+6. [`scripts/smoke-compose.sh`](scripts/smoke-compose.sh) — browser-to-API delivery smoke path.
+7. [`docs/INTEGRATION_WALKTHROUGH.md`](docs/INTEGRATION_WALKTHROUGH.md) — consumer-oriented request/response and fallback walkthrough.
+
+For a deeper source tour, read [`docs/CODE_TOUR.md`](docs/CODE_TOUR.md).
+
+## Run locally
+
+### Development
 
 ```bash
 # Terminal 1 — API
@@ -78,7 +123,7 @@ pnpm install
 pnpm dev
 ```
 
-Open `http://localhost:5174`. Vite proxies `/api` requests to the FastAPI service.
+Open `http://localhost:5174`.
 
 ### Docker Compose
 
@@ -88,29 +133,8 @@ cp .env.example .env
 docker compose up --build
 ```
 
-The dashboard is served at `http://localhost:8080`. In this local container setup, Nginx serves the built React app and proxies same-origin `/api/*` and `/health` requests to the FastAPI service. API health also remains directly available at `http://localhost:8000/health` for local inspection.
-
-After both services report healthy, run the reproducible browser-to-API smoke check:
-
-```bash
-./scripts/smoke-compose.sh
-```
-
-The check loads the Nginx-served dashboard, reaches the proxied health endpoint, and posts a deterministic workflow run through the same-origin `/api` path. This validates the **local Docker delivery topology**; it does not claim a hosted production deployment.
-
-## Verification
-
-```bash
-cd backend && pytest -q
-cd frontend && pnpm test:run && pnpm check && pnpm build
-```
-
-The local API suite covers health, deterministic run persistence, and the missing-key fallback path. The frontend suite covers initial workflow loading, explicit execution-mode language, and a submitted deterministic run. The public [GitHub Actions workflow](https://github.com/Amyvdev1/forgeflow-ai-automation/actions) runs backend tests plus frontend interface tests, type-checking, and production build checks on pushes and pull requests.
-
-## Intentional boundaries
-
-ForgeFlow is a **personal portfolio code sample**, not a production service. It does not claim customer data, autonomous external delivery, enterprise-scale infrastructure, formal security/compliance certification, provider uptime guarantees, rate limiting, retries, observability, external connectors, or production deployment. The Gemini key is never committed and the service does not call an AI provider unless an operator explicitly enables the optional adapter.
+Open `http://localhost:8080`.
 
 ---
 
-Created by **Amy Villa** to demonstrate full-stack engineering, transparent AI automation, and human-centered workflow design.
+Built by **Amy Villa** as an inspectable AI Automation Systems engineering sample.
